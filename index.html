@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WISHES - QR Collection</title>
+    <style>
+        :root { --insta: #E1306C; --green: #28a745; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        h1#admin-trigger { text-align: center; font-size: 2.5rem; cursor: pointer; margin: 20px 0; user-select: none; color: #333; }
+        
+        /* Grid: 1 line mein 2 QR */
+        .qr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; max-width: 600px; margin: auto; }
+        .qr-card { background: white; padding: 10px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; display: flex; flex-direction: column; }
+        .qr-frame { width: 100%; aspect-ratio: 1/1; background: #fafafa; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; border: 1px solid #eee; }
+        .qr-img { width: 100%; height: 100%; object-fit: contain; filter: blur(20px); display: none; }
+        .qr-img.unlocked { filter: blur(0); display: block; }
+        .lock-icon { position: absolute; font-size: 1.5rem; color: #ccc; }
+
+        /* Naam QR ke theek niche */
+        .qr-name { margin: 10px 0; font-weight: bold; font-size: 1rem; color: #1a1a1a; text-transform: capitalize; }
+
+        .btn { display: block; width: 100%; padding: 10px 0; margin-top: 5px; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; text-decoration: none; transition: 0.2s; text-align: center; }
+        .follow-btn { background: var(--insta); color: white; }
+        .dl-btn { background: #ccc; color: #777; pointer-events: none; opacity: 0.6; }
+        .dl-btn.active { background: var(--green); color: white; pointer-events: auto; opacity: 1; }
+
+        /* Admin Panel Jo 10 clicks par dikhega */
+        #admin-panel { display: none; max-width: 350px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 15px; border: 3px solid #000; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .up-btn { background: #000; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <h1 id="admin-trigger">WISHES</h1>
+
+    <div id="admin-panel">
+        <h3 style="margin:0 0 15px; text-align:center;">Add New QR & Name</h3>
+        <input type="text" id="name-in" placeholder="Enter Wish Name (e.g. Rahul B'day)">
+        <input type="file" id="file-in" accept="image/*">
+        <button class="btn up-btn" id="up-btn">Upload to Gallery</button>
+        <p style="font-size: 11px; color: red; text-align: center;">Wait for 'Success' alert after clicking</p>
+    </div>
+
+    <div class="qr-grid" id="main-grid">
+        </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDKBIUOu1AT_ONnWl3kIevex58O09R...", // Apna pura config yahan paste karna
+        authDomain: "codes-93f34.firebaseapp.com",
+        databaseURL: "https://codes-93f34-default-rtdb.firebaseio.com",
+        projectId: "codes-93f34",
+        storageBucket: "codes-93f34.firebasestorage.app",
+        messagingSenderId: "874409654851",
+        appId: "1:874409654851:web:0c899ff23fe696..."
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const grid = document.getElementById('main-grid');
+
+    // Data Load karna
+    onValue(ref(db, 'qr_gallery'), (snap) => {
+        grid.innerHTML = "";
+        const data = snap.val();
+        if(data) {
+            Object.keys(data).reverse().forEach(key => {
+                const item = data[key];
+                const card = document.createElement('div');
+                card.className = 'qr-card';
+                card.innerHTML = `
+                    <div class="qr-frame">
+                        <span class="lock-icon" id="lock-${key}">🔒</span>
+                        <img src="${item.url}" class="qr-img" id="img-${key}">
+                    </div>
+                    <div class="qr-name">${item.name}</div>
+                    <a href="https://instagram.com/WISHES___ll" target="_blank" class="btn follow-btn" onclick="unlockItem('${key}')">Follow to See</a>
+                    <button class="btn dl-btn" id="dl-${key}" onclick="downloadItem('${item.url}', '${item.name}')">Download</button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    });
+
+    // UNLOCK LOGIC
+    window.unlockItem = (id) => {
+        setTimeout(() => {
+            document.getElementById(`img-${id}`).classList.add('unlocked');
+            document.getElementById(`lock-${id}`).style.display = 'none';
+            document.getElementById(`dl-${id}`).classList.add('active');
+        }, 4000);
+    };
+
+    // DOWNLOAD LOGIC
+    window.downloadItem = async (url, filename) => {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${filename}_QR.png`;
+        a.click();
+    };
+
+    // ADMIN TRIGGER: 10 clicks on "WISHES"
+    let clicks = 0;
+    document.getElementById('admin-trigger').onclick = () => {
+        clicks++;
+        if(clicks === 10) {
+            if(prompt("Enter Admin PIN:") === "1529") {
+                document.getElementById('admin-panel').style.display = 'block';
+                window.scrollTo(0,0);
+            }
+            clicks = 0;
+        }
+    };
+
+    // UPLOAD LOGIC (Zero-Storage Method)
+    document.getElementById('up-btn').onclick = () => {
+        const file = document.getElementById('file-in').files[0];
+        const name = document.getElementById('name-in').value;
+        if(!file || !name) return alert("Naam aur Photo dono daalo!");
+
+        const btn = document.getElementById('up-btn');
+        btn.innerText = "Processing...";
+        btn.disabled = true;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64Image = reader.result;
+            try {
+                const newRef = push(ref(db, 'qr_gallery'));
+                await set(newRef, { name: name, url: base64Image });
+                alert("Boom! Upload Success.");
+                location.reload();
+            } catch(e) {
+                alert("Error! Database rules check karo.");
+                btn.disabled = false;
+                btn.innerText = "Upload to Gallery";
+            }
+        };
+    };
+</script>
+</body>
+</html>
